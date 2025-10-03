@@ -1,13 +1,18 @@
 # FastShip Backend
 
-A comprehensive FastAPI backend application demonstrating modern Python web development practices with authentication, database management, and real-world API design patterns.
+A comprehensive FastAPI backend application for delivery management demonstrating modern Python web development practices with authentication, database management, and real-world API design patterns.
 
 ## 🚀 Features
 
-- **RESTful API**: Complete CRUD operations for shipment and seller management
-- **JWT Authentication**: Secure user authentication with token-based sessions
+- **RESTful API**: Complete CRUD operations for shipment, seller, and delivery partner management
+- **JWT Authentication**: Secure user authentication with token-based sessions for sellers and delivery partners
 - **Database Integration**: PostgreSQL with async SQLAlchemy and Alembic migrations
 - **Redis Caching**: Session management and token blacklisting
+- **Email Notifications**: Automated email notifications for shipment status changes using Celery
+- **Background Processing**: Celery integration for asynchronous task processing
+- **Shipment Tracking**: Real-time shipment status tracking with timeline events
+- **Tag System**: Shipment categorization (express, fragile, heavy, etc.)
+- **Review System**: Customer feedback and rating system for shipments
 - **Modern Architecture**: Clean separation of concerns with services, dependencies, and routers
 - **API Documentation**: Interactive documentation with Scalar UI
 - **Type Safety**: Full type hints with Pydantic models and SQLModel
@@ -44,6 +49,9 @@ A comprehensive FastAPI backend application demonstrating modern Python web deve
 - **Pydantic**: Data validation and serialization
 - **email-validator**: Email format validation
 - **python-dotenv**: Environment variable management
+- **Celery**: Distributed task queue for background processing
+- **FastAPI-Mail**: Email sending capabilities
+- **Pytest**: Testing framework
 
 ## 📋 API Endpoints
 
@@ -52,6 +60,10 @@ A comprehensive FastAPI backend application demonstrating modern Python web deve
 - `POST /seller/signup` - Register new seller account
 - `POST /seller/token` - Login and receive JWT token
 - `GET /seller/logout` - Logout and blacklist token
+- `GET /seller/verify` - Verify seller email
+- `GET /seller/forgot_password` - Send password reset link
+- `POST /seller/reset_password` - Reset seller password
+- `GET /seller/reset_password_form` - Password reset form
 
 ### Delivery Partner Authentication
 
@@ -59,13 +71,20 @@ A comprehensive FastAPI backend application demonstrating modern Python web deve
 - `POST /partner/token` - Login and receive JWT token
 - `POST /partner/` - Update delivery partner information
 - `GET /partner/logout` - Logout and blacklist token
+- `GET /partner/verify` - Verify delivery partner email
 
 ### Shipment Management
 
 - `GET /shipment?id={id}` - Retrieve shipment details (requires authentication)
+- `GET /shipment/track?id={id}` - Get shipment tracking page
 - `POST /shipment` - Create new shipment (requires authentication)
 - `PATCH /shipment?id={id}` - Update shipment information
-- `DELETE /shipment?id={id}` - Delete shipment
+- `GET /shipment/cancel?id={id}` - Cancel shipment
+- `GET /shipment/review` - Submit review page
+- `POST /shipment/review` - Submit shipment review
+- `GET /shipment/tag?id={id}&tag_name={tag}` - Add tag to shipment
+- `DELETE /shipment/tag?id={id}&tag_name={tag}` - Remove tag from shipment
+- `GET /shipment/tagged?tag_name={tag}` - Get shipments with specific tag
 
 ### Documentation
 
@@ -78,6 +97,7 @@ app/
 ├── api/                    # API layer
 │   ├── dependencies.py     # Dependency injection
 │   ├── router.py          # Main router aggregation
+│   ├── tag.py             # API tags definition
 │   ├── routers/           # Individual route modules
 │   │   ├── seller.py      # Seller endpoints
 │   │   ├── delivery_partner.py # Delivery partner endpoints
@@ -87,16 +107,28 @@ app/
 │       ├── delivery_partner.py # Delivery partner request/response models
 │       └── shipment.py    # Shipment request/response models
 ├── core/                  # Core functionality
-│   └── security.py        # Security utilities
+│   ├── security.py        # Security utilities
+│   └── exceptions.py      # Custom exception handlers
 ├── database/              # Database layer
 │   ├── models.py          # SQLModel database models
 │   ├── session.py         # Database session management
 │   └── redis.py           # Redis connection and utilities
 ├── services/              # Business logic layer
+│   ├── base.py            # Base service class
 │   ├── seller.py          # Seller business logic
-│   ├── delivery_partner.py # Delivery partner business logic
+│   ├── deliver_partner.py # Delivery partner business logic
 │   ├── shipment.py        # Shipment business logic
+│   ├── shipment_event.py  # Shipment event tracking
+│   ├── notification.py    # Email notification service
 │   └── user.py            # Base user business logic
+├── templates/             # Email and HTML templates
+│   ├── mail_*.html        # Email templates for notifications
+│   └── password/          # Password reset templates
+├── tests/                 # Test suite
+│   ├── conftest.py        # Test configuration
+│   └── test_main.py       # Main test file
+├── worker/                # Background task processing
+│   └── tasks.py           # Celery task definitions
 ├── config.py              # Configuration settings
 ├── main.py                # FastAPI application entry point
 └── utils.py               # Utility functions
@@ -117,7 +149,7 @@ migrations/                # Alembic database migrations
 
 ```bash
 git clone <repository-url>
-cd ultimate-fastapi-backend
+cd fastship/backend
 ```
 
 ### 2. Install Dependencies
@@ -260,10 +292,36 @@ alembic downgrade -1
 - **Content**: Description of shipment contents
 - **Weight**: Package weight (max 25kg)
 - **Destination**: Destination zip code
-- **Status**: ShipmentStatus enum (placed, processing, in_transit, out_for_delivery, delivered, returned)
+- **Status**: ShipmentStatus enum (placed, processing, in_transit, out_for_delivery, delivered, returned, cancelled)
 - **Estimated Delivery**: Expected delivery datetime
 - **Seller**: Many-to-one relationship with seller
 - **Delivery Partner**: Many-to-one relationship with delivery partner
+- **Timeline**: Relationship with shipment events for tracking
+- **Tags**: Many-to-many relationship with tags for categorization
+- **Review**: One-to-one relationship with shipment review
+
+### ShipmentEvent
+
+- **ID**: UUID primary key
+- **Created At**: Event timestamp
+- **Status**: Event status
+- **Message**: Event description
+- **Shipment**: Many-to-one relationship with shipment
+
+### Tag
+
+- **ID**: UUID primary key
+- **Name**: TagName enum (express, standard, fragile, heavy, international, domestic, temperature_controlled, gift, return, documents)
+- **Instruction**: Special handling instructions
+- **Shipments**: Many-to-many relationship with shipments
+
+### Review
+
+- **ID**: UUID primary key
+- **Created At**: Review timestamp
+- **Rating**: Rating (1-5 stars)
+- **Comment**: Optional review comment
+- **Shipment**: One-to-one relationship with shipment
 
 ## 🔒 Security Features
 
@@ -277,13 +335,18 @@ alembic downgrade -1
 
 This project demonstrates:
 
-- Modern FastAPI application architecture
+- Modern FastAPI application architecture with delivery management domain
 - Async database operations with PostgreSQL
-- JWT authentication implementation
-- Database migration management
-- Redis integration for caching
+- JWT authentication implementation with dual user roles
+- Database migration management with Alembic
+- Redis integration for caching and session management
+- Background task processing with Celery
+- Email notification system with FastAPI-Mail
+- Shipment tracking and timeline management
+- Tag-based categorization system
+- Review and rating system
 - Clean code organization and separation of concerns
-- Type-safe Python development
+- Type-safe Python development with comprehensive models
 - RESTful API design principles
 
 ## 🤝 Contributing

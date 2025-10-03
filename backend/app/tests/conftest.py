@@ -9,7 +9,7 @@ def client():
     return TestClient(app)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=True)
 def setup_and_teardown():
     print("🧪 starting tests...")
     yield
