@@ -1,15 +1,19 @@
 from fastapi.testclient import TestClient
-import pytest
+from httpx import ASGITransport, AsyncClient
+import pytest_asyncio
 
 from app.main import app
 
 
-@pytest.fixture(scope="session")
-def client():
-    return TestClient(app)
+@pytest_asyncio.fixture(scope="session")
+async def client():
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://test"
+    ) as client:
+        yield client
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 def setup_and_teardown():
     print("🧪 starting tests...")
     yield
