@@ -155,6 +155,13 @@ class Seller(User, table=True):
     )
 
 
+class ServiceableLocation(SQLModel, table=True):
+    __tablename__ = "serviceable_location"
+
+    partner_id: UUID = Field(foreign_key="delivery_partner.id", primary_key=True)
+    location_id: UUID = Field(foreign_key="location.zip_code", primary_key=True)
+
+
 class DeliveryPartner(User, table=True):
     __tablename__ = "delivery_partner"
 
@@ -167,7 +174,12 @@ class DeliveryPartner(User, table=True):
         )
     )
 
-    serviceable_zip_codes: list[int] = Field(sa_column=Column(ARRAY(INTEGER)))
+    # serviceable_zip_codes: list[int] = Field(sa_column=Column(ARRAY(INTEGER)))
+    serviceable_locations: list["Location"] = Relationship(
+        back_populates="delivery_partners",
+        link_model=ServiceableLocation,
+        sa_relationship_kwargs={"lazy": "selectin"},
+    )
     max_handling_capacity: int
 
     shipments: list[Shipment] = Relationship(
@@ -206,4 +218,21 @@ class Review(SQLModel, table=True):
     shipment_id: UUID = Field(foreign_key="shipment.id")
     shipment: Shipment = Relationship(
         back_populates="review", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+
+
+class Location(SQLModel, table=True):
+    __tablename__ = "location"
+
+    zip_code: int = Field(primary_key=True)
+
+    # Additional fields
+    # estimated_delivery_days: int = Field(default=3)
+    # surcharge: float = Field(default=0.0)
+    # active: bool = Field(default=True)
+
+    delivery_partners: list[DeliveryPartner] = Relationship(
+        back_populates="serviceable_locations",
+        link_model=ServiceableLocation,
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
