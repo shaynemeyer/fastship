@@ -46,12 +46,15 @@ A comprehensive FastAPI backend application for delivery management demonstratin
 
 ### Development Tools
 
-- **Pydantic**: Data validation and serialization
+- **Pydantic**: Data validation and serialization with settings management
 - **email-validator**: Email format validation
 - **python-dotenv**: Environment variable management
 - **Celery**: Distributed task queue for background processing
-- **FastAPI-Mail**: Email sending capabilities
-- **Pytest**: Testing framework
+- **FastAPI-Mail**: Email sending capabilities with template support
+- **Pytest**: Testing framework with async support
+- **Alembic**: Database migrations with auto-generation
+- **Scalar FastAPI**: Modern API documentation interface
+- **Jinja2**: Template engine for email and web forms
 
 ## 📋 API Endpoints
 
@@ -62,8 +65,8 @@ A comprehensive FastAPI backend application for delivery management demonstratin
 - `GET /seller/logout` - Logout and blacklist token
 - `GET /seller/verify` - Verify seller email
 - `GET /seller/forgot_password` - Send password reset link
-- `POST /seller/reset_password` - Reset seller password
-- `GET /seller/reset_password_form` - Password reset form
+- `POST /seller/reset_password` - Reset seller password with form submission
+- `GET /seller/reset_password_form` - Password reset form template
 
 ### Delivery Partner Authentication
 
@@ -72,16 +75,19 @@ A comprehensive FastAPI backend application for delivery management demonstratin
 - `POST /partner/` - Update delivery partner information
 - `GET /partner/logout` - Logout and blacklist token
 - `GET /partner/verify` - Verify delivery partner email
+- `GET /partner/forgot_password` - Send password reset link
+- `POST /partner/reset_password` - Reset delivery partner password
+- `GET /partner/reset_password_form` - Password reset form template
 
 ### Shipment Management
 
-- `GET /shipment?id={id}` - Retrieve shipment details (requires authentication)
-- `GET /shipment/track?id={id}` - Get shipment tracking page
-- `POST /shipment` - Create new shipment (requires authentication)
-- `PATCH /shipment?id={id}` - Update shipment information
-- `GET /shipment/cancel?id={id}` - Cancel shipment
-- `GET /shipment/review` - Submit review page
-- `POST /shipment/review` - Submit shipment review
+- `GET /shipment/?id={id}` - Retrieve shipment details (requires authentication)
+- `GET /shipment/track?id={id}` - Get shipment tracking page with timeline
+- `POST /shipment/` - Create new shipment with automatic partner assignment
+- `PATCH /shipment/?id={id}` - Update shipment status (delivery partner only)
+- `GET /shipment/cancel?id={id}` - Cancel shipment (seller only)
+- `GET /shipment/review?token={token}` - Submit review page
+- `POST /shipment/review?token={token}` - Submit shipment review with rating
 - `GET /shipment/tag?id={id}&tag_name={tag}` - Add tag to shipment
 - `DELETE /shipment/tag?id={id}&tag_name={tag}` - Remove tag from shipment
 - `GET /shipment/tagged?tag_name={tag}` - Get shipments with specific tag
@@ -122,19 +128,42 @@ app/
 │   ├── notification.py    # Email notification service
 │   └── user.py            # Base user business logic
 ├── templates/             # Email and HTML templates
-│   ├── mail_*.html        # Email templates for notifications
-│   └── password/          # Password reset templates
+│   ├── mail_placed.html   # Shipment creation notification
+│   ├── mail_out_for_delivery.html # Out for delivery notification
+│   ├── mail_delivered.html # Delivery confirmation
+│   ├── mail_cancelled.html # Cancellation notification
+│   ├── mail_email_verify.html # Email verification
+│   ├── mail_password_reset.html # Password reset link
+│   ├── password/          # Password reset templates
+│   │   ├── reset.html     # Password reset form
+│   │   ├── reset_success.html # Reset success page
+│   │   └── reset_failed.html  # Reset failure page
+│   ├── track.html         # Shipment tracking page
+│   └── review.html        # Review submission form
 ├── tests/                 # Test suite
 │   ├── conftest.py        # Test configuration
-│   └── test_main.py       # Main test file
+│   ├── test_main.py       # Main application tests
+│   ├── test_shipment.py   # Shipment-specific tests
+│   └── example.py         # Test examples and utilities
 ├── worker/                # Background task processing
 │   └── tasks.py           # Celery task definitions
 ├── config.py              # Configuration settings
 ├── main.py                # FastAPI application entry point
-└── utils.py               # Utility functions
+├── utils.py               # Utility functions
+└── readme.md              # App-specific documentation
 migrations/                # Alembic database migrations
 ├── env.py                 # Migration environment configuration
+├── script.py.mako         # Migration template
 └── versions/              # Migration version files
+    ├── 1c12bdc178a7_add_tag.py
+    ├── 20cad3120032_add_created_to_seller.py
+    ├── 3469ce7f5925_remove_created_at_from_tag_table.py
+    ├── 55f5b7af3b41_add_user_email_verified.py
+    ├── 58a4532d04fc_refactor_shipment_location.py
+    ├── 71b694a99c1b_add_delivery_partner_table.py
+    ├── 91a1c49fa024_add_client_contact.py
+    ├── b563796ae6af_add_review.py
+    └── b7650f38c5ba_add_shipment_event.py
 ```
 
 ## ⚙️ Setup & Installation
@@ -177,6 +206,23 @@ REDIS_PORT=6379
 # Security Configuration
 JWT_SECRET=your-super-secret-jwt-key
 JWT_ALGORITHM=HS256
+SECURITY_SALT=your-security-salt
+
+# Email Configuration
+MAIL_USERNAME=your-email@example.com
+MAIL_PASSWORD=your-app-password
+MAIL_FROM=noreply@fastship.com
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_FROM_NAME=FastShip
+MAIL_STARTTLS=true
+MAIL_SSL_TLS=false
+USE_CREDENTIALS=true
+VALIDATE_CERTS=true
+
+# Application Configuration
+APP_NAME=FastShip
+APP_DOMAIN=localhost:8000
 ```
 
 ### 4. Database Setup
@@ -280,7 +326,7 @@ alembic downgrade -1
 
 - **ID**: UUID primary key
 - **Created At**: Account creation timestamp
-- **Serviceable Zip Codes**: Array of serviceable zip codes
+- **Serviceable Locations**: Many-to-many relationship with Location entities
 - **Max Handling Capacity**: Maximum shipment handling capacity
 - **Shipments**: One-to-many relationship with assigned shipments
 - **Properties**: Active shipments count, current handling capacity
@@ -311,9 +357,9 @@ alembic downgrade -1
 ### Tag
 
 - **ID**: UUID primary key
-- **Name**: TagName enum (express, standard, fragile, heavy, international, domestic, temperature_controlled, gift, return, documents)
+- **Name**: TagName enum (EXPRESS, STANDARD, FRAGILE, HEAVY, INTERNATIONAL, DOMESTIC, TEMPERATURE_CONTROLLED, GIFT, RETURN, DOCUMENTS)
 - **Instruction**: Special handling instructions
-- **Shipments**: Many-to-many relationship with shipments
+- **Shipments**: Many-to-many relationship with shipments via ShipmentTag
 
 ### Review
 
@@ -322,6 +368,11 @@ alembic downgrade -1
 - **Rating**: Rating (1-5 stars)
 - **Comment**: Optional review comment
 - **Shipment**: One-to-one relationship with shipment
+
+### Location
+
+- **Zip Code**: Primary key (integer)
+- **Delivery Partners**: Many-to-many relationship with delivery partners via ServiceableLocation
 
 ## 🔒 Security Features
 
