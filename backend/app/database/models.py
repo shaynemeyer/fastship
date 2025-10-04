@@ -159,7 +159,7 @@ class ServiceableLocation(SQLModel, table=True):
     __tablename__ = "serviceable_location"
 
     partner_id: UUID = Field(foreign_key="delivery_partner.id", primary_key=True)
-    location_id: UUID = Field(foreign_key="location.zip_code", primary_key=True)
+    location_id: int = Field(foreign_key="location.zip_code", primary_key=True)
 
 
 class DeliveryPartner(User, table=True):

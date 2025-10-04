@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 from scalar_fastapi import get_scalar_api_reference
 
 from app.api.tag import APITag
@@ -28,6 +29,11 @@ Delivery Management System for sellers and delivery agents
 - Email and SMS notifications
 """
 
+
+def custom_generate_unique_id_function(route: APIRoute) -> str:
+    return route.name
+
+
 app = FastAPI(
     lifespan=lifespan_handler,
     title="FastShip",
@@ -46,6 +52,7 @@ app = FastAPI(
             description: "Operations related to delivery partner.",
         },
     ],
+    generate_unique_id_function=custom_generate_unique_id_function,
 )
 
 app.add_middleware(
