@@ -354,11 +354,11 @@ graph LR
         ResetEmail[Password Reset]
     end
     
-    Service --> Queue: Enqueue task
-    Queue --> Worker: Dequeue task
-    Worker --> EmailTask: Process email
-    EmailTask --> Templates: Load template
-    EmailTask --> SMTP: Send email
+    Service --> Queue
+    Queue --> Worker
+    Worker --> EmailTask
+    EmailTask --> Templates
+    EmailTask --> SMTP
     
     EmailTask --> PlacedEmail
     EmailTask --> DeliveryEmail
