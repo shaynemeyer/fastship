@@ -1,9 +1,10 @@
 import { createContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import api from '~/lib/api';
 
 interface AuthContextType {
-  token: string | null;
+  token: string | null | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -15,13 +16,16 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       setToken(token);
       api.setSecurityData(token);
+    } else {
+      setToken(null);
     }
   }, []);
 
@@ -38,7 +42,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
         localStorage.setItem('token', data.access_token);
 
-        console.log('Login successful');
+        navigate('/dashboard');
       }
     } catch (error) {
       toast.error('Login failed. Please check your credentials.');
@@ -54,7 +58,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ token, login, logout }}>
-      {children}
+      {token === undefined ? <div>Loading...</div> : children}
     </AuthContext.Provider>
   );
 }
