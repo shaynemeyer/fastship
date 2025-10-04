@@ -15,12 +15,13 @@ import {
 } from '~/components/ui/field';
 import { Input } from '~/components/ui/input';
 import { useContext } from 'react';
-import { AuthContext } from '~/contexts/AuthContext';
+import { AuthContext, type UserType } from '~/contexts/AuthContext';
 
 export function LoginForm({
   className,
+  user,
   ...props
-}: React.ComponentProps<'div'>) {
+}: { user: UserType } & React.ComponentProps<'div'>) {
   const { login } = useContext(AuthContext);
 
   function loginUser(data: FormData) {
@@ -29,7 +30,7 @@ export function LoginForm({
 
     if (!email || !password) return;
 
-    login(email.toString(), password.toString());
+    login(user, email.toString(), password.toString());
   }
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -55,7 +56,7 @@ export function LoginForm({
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
                   <a
-                    href="#"
+                    href={`/${user}/forgot-password`}
                     className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                   >
                     Forgot your password?

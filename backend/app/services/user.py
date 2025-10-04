@@ -1,6 +1,5 @@
 from datetime import timedelta
 from uuid import UUID
-from fastapi import BackgroundTasks, HTTPException, status
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

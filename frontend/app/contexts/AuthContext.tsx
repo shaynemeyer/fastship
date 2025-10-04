@@ -3,20 +3,27 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import api from '~/lib/api';
 
+type UserType = 'seller' | 'partner';
+
 interface AuthContextType {
-  token: string | null | undefined;
-  login: (email: string, password: string) => Promise<void>;
+  token?: string | null;
+  user?: UserType;
+  login: (
+    user_type: UserType,
+    email: string,
+    password: string
+  ) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  token: null,
   login: async () => {},
   logout: () => {},
 });
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>();
+  const [user, setUser] = useState<UserType>();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,18 +36,25 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(user_type: UserType, email: string, password: string) {
     try {
-      const { data } = await api.seller.loginSeller({
+      const loginUser =
+        user_type === 'seller'
+          ? api.seller.loginSeller
+          : api.partner.loginDeliveryPartner;
+
+      const { data } = await loginUser({
         username: email,
         password,
       });
 
       if (data?.access_token) {
         setToken(data.access_token);
+        setUser(user_type);
         api.setSecurityData(data.access_token);
 
         localStorage.setItem('token', data.access_token);
+        localStorage.setItem('user_type', user_type);
 
         navigate('/dashboard');
       }
@@ -52,15 +66,16 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   async function logout() {
     api.seller.logoutSeller();
     setToken(null);
+    setUser(undefined);
     api.setSecurityData(null);
     localStorage.removeItem('token');
   }
 
   return (
-    <AuthContext.Provider value={{ token, login, logout }}>
+    <AuthContext.Provider value={{ token, user, login, logout }}>
       {token === undefined ? <div>Loading...</div> : children}
     </AuthContext.Provider>
   );
 }
 
-export { AuthProvider, AuthContext, type AuthContextType };
+export { AuthProvider, AuthContext, type AuthContextType, type UserType };

@@ -978,5 +978,80 @@ export class Api<
         format: "json",
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags Delivery Partner
+     * @name ForgotPassword
+     * @summary Forgot Password
+     * @request GET:/partner/forgot_password
+     */
+    forgotPassword: (
+      query: {
+        /**
+         * Email
+         * @format email
+         */
+        email: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<any, HTTPValidationError>({
+        path: `/partner/forgot_password`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Delivery Partner
+     * @name ResetPassword
+     * @summary Reset Password
+     * @request POST:/partner/reset_password
+     */
+    resetPassword: (
+      query: {
+        /** Token */
+        token: string;
+      },
+      data: BodyResetPassword,
+      params: RequestParams = {},
+    ) =>
+      this.request<any, HTTPValidationError>({
+        path: `/partner/reset_password`,
+        method: "POST",
+        query: query,
+        body: data,
+        type: ContentType.UrlEncoded,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Delivery Partner
+     * @name GetResetPasswordForm
+     * @summary Get Reset Password Form
+     * @request GET:/partner/reset_password_form
+     */
+    getResetPasswordForm: (
+      query: {
+        /** Token */
+        token: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<any, HTTPValidationError>({
+        path: `/partner/reset_password_form`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
   };
 }
