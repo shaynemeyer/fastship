@@ -52,6 +52,9 @@ app = FastAPI(
             description: "Operations related to delivery partner.",
         },
     ],
+    redoc_url=None,
+    docs_url=None,
+    version="0.1.0",
     generate_unique_id_function=custom_generate_unique_id_function,
 )
 
