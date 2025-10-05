@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
 
 from app.api.dependencies import (
+    SellerDep,
     SellerServiceDep,
     get_seller_access_token,
 )
@@ -91,10 +92,17 @@ async def get_reset_password_form(request: Request, token: str):
         },
     )
 
+
+### Get seller profile
+@router.get("/me", response_model=SellerRead)
+async def get_seller_profile(seller: SellerDep):
+    return seller
+
+
 ### Get shipments by partner id
 @router.get("/shipments")
-async def get_shipments(id: UUID, service: SellerServiceDep):
-    shipments = await service.get_shipments_by_seller(id)
+async def get_shipments(token: str, service: SellerServiceDep):
+    shipments = await service.get_shipments_by_seller(token)
 
     if shipments is None:
         raise EntityNotFound

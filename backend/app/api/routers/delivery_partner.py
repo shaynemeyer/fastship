@@ -118,10 +118,16 @@ async def get_reset_password_form(request: Request, token: str):
     )
 
 
+### Get seller profile
+@router.get("/me", response_model=DeliveryPartnerRead)
+async def get_partner_profile(partner: DeliveryPartnerDep):
+    return partner
+
+
 ### Get shipments by partner id
 @router.get("/shipments")
-async def get_shipments(id: UUID, service: DeliveryPartnerServiceDep):
-    shipments = await service.get_shipments_by_partner(id)
+async def get_shipments(token: str, service: DeliveryPartnerServiceDep):
+    shipments = await service.get_shipments_by_partner(token)
 
     if shipments is None:
         raise EntityNotFound

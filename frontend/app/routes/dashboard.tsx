@@ -2,6 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useContext } from 'react';
 import { Navigate } from 'react-router';
 import { AppSidebar } from '~/components/app-sidebar';
+import NumberLabel from '~/components/labels/number-label';
+import Loading from '~/components/loading';
+import ShipmentCard from '~/components/shipment/shimpment-card';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,19 +21,22 @@ import {
 } from '~/components/ui/sidebar';
 import { AuthContext } from '~/contexts/AuthContext';
 import api from '~/lib/api';
+import { ShipmentStatus } from '~/lib/client';
+import type { Shipment } from '~/lib/types';
+import { getShipmentsCountForStatus } from '~/lib/utils';
 
 export default function DashboardPage() {
   const { token, user } = useContext(AuthContext);
 
   if (!token) {
-    return <Navigate to="/login" />;
+    return <Navigate to={`/`} />;
   }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['shipments'],
     queryFn: async () => {
       const userApi = user === 'seller' ? api.seller : api.partner;
-      const { data } = await userApi.getShipments();
+      const { data } = await userApi.getShipments({ token });
       return data;
     },
   });
@@ -74,12 +80,41 @@ export default function DashboardPage() {
           </Breadcrumb>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-          </div>
-          <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
+          {isLoading || !data ? (
+            <Loading />
+          ) : (
+            <>
+              <div className="grid auto-rows-min gap-4 md:grid-cols-4">
+                <NumberLabel value={data.length} label="Total Shipments" />
+                <NumberLabel
+                  value={getShipmentsCountForStatus(
+                    data,
+                    ShipmentStatus.Placed
+                  )}
+                  label="Placed"
+                />
+                <NumberLabel
+                  value={getShipmentsCountForStatus(
+                    data,
+                    ShipmentStatus.InTransit
+                  )}
+                  label="In Transit"
+                />
+                <NumberLabel
+                  value={getShipmentsCountForStatus(
+                    data,
+                    ShipmentStatus.Delivered
+                  )}
+                  label="Delivered"
+                />
+              </div>
+              <div className="grid auto-rows-min gap-4 md:grid-cols-4">
+                {data.map((shipment: Shipment) => (
+                  <ShipmentCard shipment={shipment} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </SidebarInset>
     </SidebarProvider>

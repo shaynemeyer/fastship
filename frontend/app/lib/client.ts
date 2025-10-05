@@ -871,6 +871,47 @@ export class Api<
         format: "json",
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags Seller
+     * @name GetSellerProfile
+     * @summary Get Seller Profile
+     * @request GET:/seller/me
+     * @secure
+     */
+    getSellerProfile: (params: RequestParams = {}) =>
+      this.request<SellerRead, any>({
+        path: `/seller/me`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Seller
+     * @name GetShipments
+     * @summary Get Shipments
+     * @request GET:/seller/shipments
+     */
+    getShipments: (
+      query: {
+        /** Token */
+        token: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<any, HTTPValidationError>({
+        path: `/seller/shipments`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
   };
   partner = {
     /**
@@ -1048,6 +1089,47 @@ export class Api<
     ) =>
       this.request<any, HTTPValidationError>({
         path: `/partner/reset_password_form`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Delivery Partner
+     * @name GetPartnerProfile
+     * @summary Get Partner Profile
+     * @request GET:/partner/me
+     * @secure
+     */
+    getPartnerProfile: (params: RequestParams = {}) =>
+      this.request<DeliveryPartnerRead, any>({
+        path: `/partner/me`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Delivery Partner
+     * @name GetShipments
+     * @summary Get Shipments
+     * @request GET:/partner/shipments
+     */
+    getShipments: (
+      query: {
+        /** Token */
+        token: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<any, HTTPValidationError>({
+        path: `/partner/shipments`,
         method: "GET",
         query: query,
         format: "json",

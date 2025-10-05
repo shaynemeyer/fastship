@@ -2,10 +2,12 @@ from typing import Sequence
 from uuid import UUID
 from sqlmodel import select
 from app.api.schemas.delivery_partner import DeliveryPartnerCreate
-from app.core.exceptions import DeliveryPartnerNotAvailable
+from app.core.exceptions import DeliveryPartnerNotAvailable, InvalidToken
 from app.database.models import DeliveryPartner, Location, Shipment
 from app.services.user import UserService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.utils import decode_url_safe_token
 
 
 class DeliveryPartnerService(UserService):
@@ -33,10 +35,16 @@ class DeliveryPartnerService(UserService):
             )
         ).all()
 
-    async def get_shipments_by_partner(self, id: UUID) -> Sequence[Shipment]:
+    async def get_shipments_by_partner(self, token: str) -> Sequence[Shipment]:
+        token_data = decode_url_safe_token(token)
+        # Validate the token
+        if not token_data:
+            raise InvalidToken
+        userId = UUID(token_data["id"])
+
         return (
             await self.session.scalars(
-                select(DeliveryPartner.shipments).where(DeliveryPartner.id == id)
+                select(DeliveryPartner.shipments).where(DeliveryPartner.id == userId)
             )
         ).all()
 
