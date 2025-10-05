@@ -80,8 +80,8 @@ def get_seller_service(session: SessionDep):
 
 
 # Delivery partner service dep
-def get_delivery_partner_service(session: SessionDep, tasks: BackgroundTasks):
-    return DeliveryPartnerService(session, tasks)
+def get_delivery_partner_service(session: SessionDep):
+    return DeliveryPartnerService(session)
 
 
 SellerDep = Annotated[Seller, Depends(get_current_seller)]

@@ -1,6 +1,6 @@
 from typing import Sequence
-from fastapi import BackgroundTasks, HTTPException, status
-from sqlmodel import any_, select
+from uuid import UUID
+from sqlmodel import select
 from app.api.schemas.delivery_partner import DeliveryPartnerCreate
 from app.core.exceptions import DeliveryPartnerNotAvailable
 from app.database.models import DeliveryPartner, Location, Shipment
@@ -10,13 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 class DeliveryPartnerService(UserService):
     def __init__(self, session: AsyncSession):
-        super().__init__(DeliveryPartner, session)
+        super().__init__(DeliveryPartner, session)  # type: ignore
 
     async def add(self, delivery_partner: DeliveryPartnerCreate):
         partner: DeliveryPartner = await self._add_user(
             delivery_partner.model_dump(exclude={"serviceable_zip_codes"}),
             "partner",
-        )
+        )  # type: ignore
         for zip_code in delivery_partner.serviceable_zip_codes:
             location = await self.session.get(Location, zip_code)
             partner.serviceable_locations.append(
@@ -28,8 +28,15 @@ class DeliveryPartnerService(UserService):
         return (
             await self.session.scalars(
                 select(DeliveryPartner)
-                .join(DeliveryPartner.serviceable_locations)
+                .join(DeliveryPartner.serviceable_locations)  # type: ignore
                 .where(Location.zip_code == zipcode)
+            )
+        ).all()
+
+    async def get_shipments_by_partner(self, id: UUID) -> Sequence[Shipment]:
+        return (
+            await self.session.scalars(
+                select(DeliveryPartner.shipments).where(DeliveryPartner.id == id)
             )
         ).all()
 

@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
@@ -11,6 +12,7 @@ from app.api.dependencies import (
 from app.api.schemas.seller import SellerCreate, SellerRead
 from app.api.tag import APITag
 from app.config import app_settings
+from app.core.exceptions import EntityNotFound
 from app.database.redis import add_jti_to_blacklist
 from app.utils import TEMPLATE_DIR
 
@@ -88,3 +90,13 @@ async def get_reset_password_form(request: Request, token: str):
             "reset_url": f"http://{app_settings.APP_DOMAIN}{router.prefix}/reset_password?token={token}",
         },
     )
+
+### Get shipments by partner id
+@router.get("/shipments")
+async def get_shipments(id: UUID, service: SellerServiceDep):
+    shipments = await service.get_shipments_by_seller(id)
+
+    if shipments is None:
+        raise EntityNotFound
+
+    return shipments
