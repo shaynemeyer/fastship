@@ -19,3 +19,13 @@ class DeliveryPartnerUpdate(BaseModel):
 
 class DeliveryPartnerCreate(BaseDeliveryPartner):
     password: str
+
+
+class Shipment(BaseModel):
+    content: str
+
+
+class DeliveryPartnerShipments(BaseModel):
+    shipments: list[Shipment]
+    total_shipments: int
+    page: int

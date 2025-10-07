@@ -1,20 +1,26 @@
-from typing import Annotated
+from math import ceil
+from typing import Annotated, Literal
 from uuid import UUID
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
+from sqlmodel import asc, desc, select
 
+from app.api.schemas.pagination import PaginationParams, get_pagination_params
+from app.api.schemas.shipment import ShipmentRead
 from app.config import app_settings
 
 from app.api.dependencies import (
     DeliveryPartnerDep,
     DeliveryPartnerServiceDep,
+    SessionDep,
     get_delivery_partner_access_token,
 )
 from app.api.schemas.delivery_partner import (
     DeliveryPartnerCreate,
     DeliveryPartnerRead,
+    DeliveryPartnerShipments,
     DeliveryPartnerUpdate,
 )
 from app.api.tag import APITag
@@ -124,12 +130,28 @@ async def get_partner_profile(partner: DeliveryPartnerDep):
     return partner
 
 
-### Get shipments by partner id
-@router.get("/shipments")
-async def get_shipments(token: str, service: DeliveryPartnerServiceDep):
-    shipments = await service.get_shipments_by_partner(token)
+### Get all shipments assigned to the delivery partner
+@router.get("/shipments", response_model=list[DeliveryPartnerShipments])
+async def get_shipments(
+    partner: DeliveryPartnerDep,
+    session: SessionDep,
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+):
+    result = await session.scalars(
+        select(Shipment)
+        .where(Shipment.delivery_partner_id == partner.id)
+        .limit(pagination.pageSize)
+        .offset((pagination.page - 1) * pagination.pageSize)
+        .order_by(
+            asc(Shipment.created_at)
+            if pagination.order == "asc"
+            else desc(Shipment.created_at)
+        )
+    )
 
-    if shipments is None:
-        raise EntityNotFound
-
-    return shipments
+    return {
+        "shipments": result.all(),
+        "total_shipments": len(partner.shipments),
+        "page": pagination.page,
+        "total_pages": ceil(len(partner.shipments) / pagination.pageSize),
+    }

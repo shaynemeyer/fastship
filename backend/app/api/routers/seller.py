@@ -1,19 +1,24 @@
+from math import ceil
 from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from pydantic import EmailStr
+from sqlmodel import asc, desc, select
 
 from app.api.dependencies import (
     SellerDep,
     SellerServiceDep,
+    SessionDep,
     get_seller_access_token,
 )
-from app.api.schemas.seller import SellerCreate, SellerRead
+from app.api.schemas.pagination import PaginationParams, get_pagination_params
+from app.api.schemas.seller import SellerCreate, SellerRead, SellerShipments
 from app.api.tag import APITag
 from app.config import app_settings
 from app.core.exceptions import EntityNotFound
+from app.database.models import Shipment
 from app.database.redis import add_jti_to_blacklist
 from app.utils import TEMPLATE_DIR
 
@@ -99,12 +104,28 @@ async def get_seller_profile(seller: SellerDep):
     return seller
 
 
-### Get shipments by partner id
-@router.get("/shipments")
-async def get_shipments(token: str, service: SellerServiceDep):
-    shipments = await service.get_shipments_by_seller(token)
+### Get all shipments assigned to the delivery partner
+@router.get("/shipments", response_model=list[SellerShipments])
+async def get_shipments(
+    seller: SellerDep,
+    session: SessionDep,
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+):
+    result = await session.scalars(
+        select(Shipment)
+        .where(Shipment.seller_id == seller.id)
+        .limit(pagination.pageSize)
+        .offset((pagination.page - 1) * pagination.pageSize)
+        .order_by(
+            asc(Shipment.created_at)
+            if pagination.order == "asc"
+            else desc(Shipment.created_at)
+        )
+    )
 
-    if shipments is None:
-        raise EntityNotFound
-
-    return shipments
+    return {
+        "shipments": result.all(),
+        "total_shipments": len(seller.shipments),
+        "page": pagination.page,
+        "total_pages": ceil(len(seller.shipments) / pagination.pageSize),
+    }
